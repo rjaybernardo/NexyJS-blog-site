@@ -1,0 +1,203 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-serif);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * Two-tone theme: every color is ink, paper, or a mix of the two. Dark mode
+ * swaps them. Change --ink and --paper to restyle the whole site.
+ */
+:root {
+  --radius: 0.5rem;
+
+  --ink: #161616;
+  --paper: #f6f5f1;
+}
+
+.dark {
+  --ink: #f6f5f1;
+  --paper: #161616;
+}
+
+:root,
+.dark {
+  --background: var(--paper);
+  --foreground: var(--ink);
+
+  --card: var(--paper);
+  --card-foreground: var(--ink);
+
+  --popover: var(--paper);
+  --popover-foreground: var(--ink);
+
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
+
+  --secondary: color-mix(in oklab, var(--ink) 6%, var(--paper));
+  --secondary-foreground: var(--ink);
+
+  --muted: color-mix(in oklab, var(--ink) 6%, var(--paper));
+  --muted-foreground: color-mix(in oklab, var(--ink) 58%, var(--paper));
+
+  --accent: color-mix(in oklab, var(--ink) 8%, var(--paper));
+  --accent-foreground: var(--ink);
+
+  /* No red: destructive actions read as ink, the dialog text says the rest */
+  --destructive: var(--ink);
+  --destructive-foreground: var(--paper);
+
+  --border: color-mix(in oklab, var(--ink) 13%, var(--paper));
+  --input: color-mix(in oklab, var(--ink) 16%, var(--paper));
+  --ring: color-mix(in oklab, var(--ink) 45%, var(--paper));
+
+  --chart-1: var(--ink);
+  --chart-2: color-mix(in oklab, var(--ink) 30%, var(--paper));
+  --chart-3: color-mix(in oklab, var(--ink) 55%, var(--paper));
+  --chart-4: color-mix(in oklab, var(--ink) 75%, var(--paper));
+  --chart-5: color-mix(in oklab, var(--ink) 15%, var(--paper));
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+@utility wrapper {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding: 1.25rem;
+
+  @media (width >= 48rem) {
+    padding-inline: 2.5rem;
+  }
+}
+
+@utility flex-start {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+@utility flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@utility flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@utility h1-bold {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+  font-weight: 700;
+
+  @media (width >= 64rem) {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+  }
+}
+
+@utility h2-bold {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 700;
+
+  @media (width >= 64rem) {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+}
+
+@utility h3-bold {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 700;
+
+  @media (width >= 64rem) {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* UploadThing's button in the two tones */
+.upload-field [data-ut-element="button"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.upload-field [data-ut-element="allowed-content"] {
+  color: var(--muted-foreground);
+}
+
+/* Long-form reading width for posts */
+@utility prose-width {
+  width: 100%;
+  max-width: 44rem;
+  margin-inline: auto;
+}

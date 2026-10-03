@@ -12,7 +12,7 @@ export const signUpFormSchema = z
   .object({
     name: z.string().trim().min(2, "Name must be at least 2 characters"),
     email,
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    password: z.string().min(8, "Password must be at least 8 characters").max(128),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -69,3 +69,29 @@ export const updateUserRoleSchema = z.object({
   id: z.uuid(),
   role: z.enum(["user", "admin"]),
 });
+
+const newPassword = z.string().min(8, "Password must be at least 8 characters").max(128);
+
+export const forgotPasswordSchema = z.object({ email });
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(32).max(128),
+    password: newPassword,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string(),
+    password: newPassword,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });

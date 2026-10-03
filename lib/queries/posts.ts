@@ -67,9 +67,10 @@ export async function getFeaturedPost() {
   });
 }
 
-export async function getPostBySlug(slug: string) {
+// Drafts only for admin previews; callers must check the role first
+export async function getPostBySlug(slug: string, { includeDrafts = false } = {}) {
   return prisma.post.findFirst({
-    where: { ...published, slug },
+    where: includeDrafts ? { slug } : { ...published, slug },
     include: {
       author: { select: { name: true, image: true, bio: true } },
       tags: { select: { id: true, name: true, slug: true }, orderBy: { name: "asc" } },
@@ -92,11 +93,10 @@ export async function getRelatedPosts(postId: string, tagIds: string[]) {
   });
 }
 
+// Raw SQL so a view doesn't touch updatedAt (Prisma's @updatedAt would
+// otherwise mark every read post as "recently edited")
 export async function incrementPostViews(id: string) {
-  await prisma.post.update({
-    where: { id },
-    data: { views: { increment: 1 } },
-  });
+  await prisma.$executeRaw`UPDATE "Post" SET "views" = "views" + 1 WHERE "id" = ${id}::uuid`;
 }
 
 // Tags that have at least one published post, most used first

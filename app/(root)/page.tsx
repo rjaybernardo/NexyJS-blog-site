@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRightIcon } from "lucide-react";
 
@@ -5,6 +6,8 @@ import PostCard from "@/components/shared/post/post-card";
 import { buttonVariants } from "@/components/ui/button";
 import { APP_DESCRIPTION } from "@/lib/constants";
 import { getFeaturedPost, getPopularTags, getPublishedPosts } from "@/lib/queries/posts";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function HomePage() {
   const [featured, { posts }, tags] = await Promise.all([

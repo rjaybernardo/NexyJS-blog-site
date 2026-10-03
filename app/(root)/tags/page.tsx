@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { getPopularTags } from "@/lib/queries/posts";
 
-export const metadata: Metadata = { title: "Topics" };
+export const metadata: Metadata = { title: "Topics", alternates: { canonical: "/tags" } };
 
 export default async function TagsPage() {
   const tags = await getPopularTags(100);

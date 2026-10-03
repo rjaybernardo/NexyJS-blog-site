@@ -15,6 +15,7 @@ export default function CommentForm({ postId }: { postId: string }) {
     if (!state) return;
 
     if (state.success) {
+      toast.success(state.message);
       formRef.current?.reset();
     } else {
       toast.error(state.message);

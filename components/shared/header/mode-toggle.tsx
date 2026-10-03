@@ -32,8 +32,10 @@ const ModeToggle = () => {
     () => false,
   );
 
+  // Same-size placeholder until the saved theme is known, so the header
+  // doesn't shift when the button appears
   if (!mounted) {
-    return null;
+    return <span aria-hidden="true" className="inline-block size-9" />;
   }
 
   return (

@@ -6,7 +6,9 @@ const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 
 /*
  * End-to-end tests run against the dev server and the database in .env.
- * Seed the database first (npm run db:seed) so there are posts to read.
+ * Seed the database first (npm run db:seed) so there are posts to read and
+ * an admin to sign in as. Test data uses e2e+...@example.com emails and
+ * e2e- slugs, and is removed before and after each run (tests/e2e/db.ts).
  */
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -19,6 +21,8 @@ export default defineConfig({
     timeout: 20_000,
   },
   reporter: [["list"], ["html", { open: "never" }]],
+  globalSetup: "./tests/e2e/global-setup.ts",
+  globalTeardown: "./tests/e2e/global-teardown.ts",
   use: {
     baseURL,
     trace: "retain-on-failure",

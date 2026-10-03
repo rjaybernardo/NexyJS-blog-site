@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   BoldIcon,
   CodeIcon,
+  ExternalLinkIcon,
   FileUpIcon,
   Heading2Icon,
   ImageIcon,
@@ -13,14 +14,15 @@ import {
   QuoteIcon,
   XIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
 import Markdown from "@/components/shared/markdown";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -36,14 +38,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { createPost, updatePost } from "@/lib/actions/post.actions";
 import { excerptFrom, parseFrontMatter } from "@/lib/frontmatter";
 import { UploadButton } from "@/lib/uploadthing";
-import { cn, readingTime, toSlug } from "@/lib/utils";
+import { cn, formatDate, readingTime, toSlug } from "@/lib/utils";
 import { postSchema } from "@/lib/validators";
 
 type PostFormValues = z.infer<typeof postSchema>;
 
 type PostFormProps = {
   tags: { id: string; name: string; slug: string }[];
-  post?: PostFormValues & { id: string };
+  post?: PostFormValues & { id: string; notifiedAt: Date | null };
+  subscriberCount: number;
 };
 
 const emptyPost: PostFormValues = {
@@ -69,7 +72,7 @@ const toolbar = [
   { label: "Code block", icon: CodeIcon, before: "\n```\n", after: "\n```\n", placeholder: "code" },
 ];
 
-export default function PostForm({ tags, post }: PostFormProps) {
+export default function PostForm({ tags, post, subscriberCount }: PostFormProps) {
   const router = useRouter();
   const contentRef = useRef<HTMLTextAreaElement | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -77,6 +80,7 @@ export default function PostForm({ tags, post }: PostFormProps) {
   const [error, setError] = useState<string | null>(null);
   // New posts follow the title until the slug is edited by hand
   const [slugTouched, setSlugTouched] = useState(Boolean(post));
+  const [notifySubscribers, setNotifySubscribers] = useState(true);
 
   const {
     register,
@@ -84,7 +88,8 @@ export default function PostForm({ tags, post }: PostFormProps) {
     setValue,
     getValues,
     control,
-    formState: { errors, isSubmitting },
+    reset,
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<PostFormValues>({
     resolver: zodResolver(postSchema),
     defaultValues: post ?? emptyPost,
@@ -96,6 +101,16 @@ export default function PostForm({ tags, post }: PostFormProps) {
   });
 
   const contentField = register("content");
+
+  // Warn before leaving with unsaved changes (reload, close tab, back)
+  useEffect(() => {
+    if (!isDirty || isSubmitting) return;
+
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isDirty, isSubmitting]);
 
   const set = (name: keyof PostFormValues, value: PostFormValues[keyof PostFormValues]) =>
     setValue(name, value, { shouldDirty: true, shouldValidate: true });
@@ -161,7 +176,9 @@ export default function PostForm({ tags, post }: PostFormProps) {
   const onSubmit = async (values: PostFormValues) => {
     setError(null);
 
-    const result = post ? await updatePost({ ...values, id: post.id }) : await createPost(values);
+    const result = post
+      ? await updatePost({ ...values, id: post.id }, notifySubscribers)
+      : await createPost(values, notifySubscribers);
 
     if (!result.success) {
       setError(result.message);
@@ -171,6 +188,9 @@ export default function PostForm({ tags, post }: PostFormProps) {
 
     toast.success(result.message);
 
+    // Saved values become the new baseline for unsaved-change checks
+    reset(values);
+
     if (post) {
       router.refresh();
     } else {
@@ -178,8 +198,25 @@ export default function PostForm({ tags, post }: PostFormProps) {
     }
   };
 
+  const submit = handleSubmit(onSubmit);
+
+  // Ctrl/Cmd+S saves instead of opening the browser's "Save page" dialog
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        if (!isSubmitting) void submit();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [submit, isSubmitting]);
+
+  const willEmail = status === "published" && !post?.notifiedAt;
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6 lg:grid-cols-[1fr_20rem]" noValidate>
+    <form onSubmit={submit} className="grid gap-6 lg:grid-cols-[1fr_20rem]" noValidate>
       <div className="min-w-0 space-y-6">
         <Card>
           <CardContent>
@@ -375,6 +412,23 @@ export default function PostForm({ tags, post }: PostFormProps) {
               )}
             />
 
+            {post?.notifiedAt ? (
+              <p className="text-sm text-muted-foreground">
+                Subscribers were emailed on {formatDate(post.notifiedAt)}.
+              </p>
+            ) : (
+              <Field orientation="horizontal">
+                <Checkbox
+                  id="notify"
+                  checked={notifySubscribers}
+                  onCheckedChange={(checked) => setNotifySubscribers(checked === true)}
+                />
+                <FieldLabel htmlFor="notify" className="font-normal">
+                  Email {subscriberCount} {subscriberCount === 1 ? "subscriber" : "subscribers"} when published
+                </FieldLabel>
+              </Field>
+            )}
+
             {error && <p className="text-sm text-destructive">{error}</p>}
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
@@ -388,6 +442,26 @@ export default function PostForm({ tags, post }: PostFormProps) {
                     ? "Publish post"
                     : "Create draft"}
             </Button>
+
+            {willEmail && notifySubscribers && subscriberCount > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Saving as published sends the email once. Later edits won&apos;t email again.
+              </p>
+            )}
+
+            {post && (
+              <Link
+                href={`/blog/${post.slug}`}
+                target="_blank"
+                className={buttonVariants({ variant: "outline", className: "w-full" })}
+              >
+                {post.status === "published" ? "View post" : "Preview draft"} <ExternalLinkIcon />
+              </Link>
+            )}
+
+            <p className="text-center text-xs text-muted-foreground">
+              {isDirty ? "Unsaved changes · " : ""}Ctrl/⌘ + S to save
+            </p>
           </CardContent>
         </Card>
 

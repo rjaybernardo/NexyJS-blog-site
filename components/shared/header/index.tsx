@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { MenuIcon } from "lucide-react";
 
 import Logo from "@/components/shared/logo";
@@ -12,30 +11,17 @@ import {
 } from "@/components/ui/sheet";
 
 import ModeToggle from "./mode-toggle";
+import NavLinks from "./nav-links";
 import SearchBox from "./search-box";
 import UserButton from "./user-button";
-
-const links = [
-  { href: "/blog", label: "Blog" },
-  { href: "/tags", label: "Topics" },
-  { href: "/about", label: "About" },
-];
 
 const Header = () => (
   <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
     <div className="wrapper flex h-16 items-center gap-6 py-0!">
       <Logo />
 
-      <nav aria-label="Main" className="hidden items-center gap-5 md:flex">
-        {links.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {link.label}
-          </Link>
-        ))}
+      <nav aria-label="Main" className="hidden md:block">
+        <NavLinks className="flex items-center gap-5" linkClassName="text-sm" />
       </nav>
 
       <div className="ml-auto flex items-center gap-2">
@@ -65,12 +51,8 @@ const Header = () => (
             </SheetHeader>
             <div className="flex flex-col gap-4 px-4">
               <SearchBox />
-              <nav aria-label="Mobile" className="flex flex-col gap-3">
-                {links.map((link) => (
-                  <Link key={link.href} href={link.href} className="text-base">
-                    {link.label}
-                  </Link>
-                ))}
+              <nav aria-label="Mobile">
+                <NavLinks className="flex flex-col gap-3" linkClassName="text-base" />
               </nav>
               <UserButton />
             </div>

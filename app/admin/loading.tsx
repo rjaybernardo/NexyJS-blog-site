@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react";
 
+// Dashboard only: a root loading.tsx would make public 404 pages return 200
 const Loading = () => {
   return (
     <div

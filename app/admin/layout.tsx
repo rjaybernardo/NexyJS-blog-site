@@ -14,6 +14,10 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
+// Every page reads the session (header) and the database, so render per
+// request; this also keeps `next build` from needing a database connection
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   await requireAdmin();
 

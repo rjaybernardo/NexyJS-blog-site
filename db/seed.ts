@@ -68,6 +68,8 @@ async function main() {
         ...post,
         status: publishedAt ? "published" : "draft",
         publishedAt,
+        // Sample posts never email subscribers
+        notifiedAt: publishedAt,
         views: publishedAt ? Math.round(1200 / (index + 1)) : 0,
         authorId: admin.id,
         tags: { connect: postTags.map((name) => ({ id: tagId(name) })) },

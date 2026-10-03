@@ -5,14 +5,16 @@ import DeleteDialog from "@/components/shared/delete-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { deleteComment } from "@/lib/actions/comment.actions";
+import { isAdmin } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/utils";
 
 import CommentForm from "./comment-form";
 
 export default async function Comments({ postId, slug }: { postId: string; slug: string }) {
-  const [session, comments] = await Promise.all([
+  const [session, canModerate, comments] = await Promise.all([
     auth(),
+    isAdmin(),
     prisma.comment.findMany({
       where: { postId },
       select: {
@@ -61,7 +63,7 @@ export default async function Comments({ postId, slug }: { postId: string; slug:
                 <time dateTime={comment.createdAt.toISOString()} className="text-muted-foreground">
                   {formatDate(comment.createdAt)}
                 </time>
-                {(user?.id === comment.userId || user?.role === "admin") && (
+                {(user?.id === comment.userId || canModerate) && (
                   <span className="ml-auto">
                     <DeleteDialog id={comment.id} label="comment" action={deleteComment} iconOnly />
                   </span>

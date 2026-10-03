@@ -20,7 +20,12 @@ export default function SignInForm({ callbackUrl }: { callbackUrl: string }) {
           <Input id="email" name="email" type="email" required autoComplete="email" />
         </Field>
         <Field>
-          <FieldLabel htmlFor="password">Password</FieldLabel>
+          <div className="flex items-center justify-between">
+            <FieldLabel htmlFor="password">Password</FieldLabel>
+            <Link href="/forgot-password" className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+              Forgot password?
+            </Link>
+          </div>
           <Input id="password" name="password" type="password" required autoComplete="current-password" />
         </Field>
         {state && !state.success && <FieldError>{state.message}</FieldError>}

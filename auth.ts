@@ -41,6 +41,14 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
 
   adapter: PrismaAdapter(prisma),
 
+  // A wrong password is normal; don't log it as a server error
+  logger: {
+    error(error) {
+      if (error.name === "CredentialsSignin") return;
+      console.error(error);
+    },
+  },
+
   providers: [
     Credentials({
       credentials: {

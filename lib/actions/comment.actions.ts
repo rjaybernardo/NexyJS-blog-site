@@ -6,6 +6,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { assertAdmin } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
+import { assertRateLimit } from "@/lib/rate-limit";
 import { formatError } from "@/lib/utils/server";
 import { commentSchema } from "@/lib/validators";
 
@@ -18,6 +19,8 @@ export async function addComment(_prevState: unknown, formData: FormData) {
       postId: formData.get("postId"),
       content: formData.get("content"),
     });
+
+    await assertRateLimit({ key: `comment:${session.user.id}`, limit: 10, windowMs: 10 * 60 * 1000 });
 
     const post = await prisma.post.findFirst({
       where: { id: data.postId, status: "published" },

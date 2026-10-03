@@ -83,6 +83,8 @@ model Post {
   views       Int        @default(0)
   // Set the first time the post is published
   publishedAt DateTime?  @db.Timestamp(6)
+  // When subscribers were emailed about this post; set once, never cleared
+  notifiedAt  DateTime?  @db.Timestamp(6)
   authorId    String     @db.Uuid
   createdAt   DateTime   @default(now()) @db.Timestamp(6)
   updatedAt   DateTime   @updatedAt
@@ -117,5 +119,14 @@ model Comment {
 model Subscriber {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email     String   @unique(map: "subscriber_email_idx")
+  // Secret for the one-click unsubscribe link in every email
+  token     String   @unique(map: "subscriber_token_idx") @default(dbgenerated("replace(gen_random_uuid()::text, '-', '')"))
   createdAt DateTime @default(now()) @db.Timestamp(6)
+}
+
+// Fixed-window counters for lib/rate-limit.ts
+model RateLimit {
+  key     String   @id
+  count   Int      @default(0)
+  resetAt DateTime @db.Timestamp(6)
 }

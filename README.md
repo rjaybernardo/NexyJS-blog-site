@@ -10,16 +10,18 @@ written in Markdown, stored in Postgres, and managed from `/admin`.
 - Home page with a featured post, latest posts and popular topics
 - `/blog` listing with search across titles and content (`?q=`), topic filter (`?tag=`) and pagination
 - Post pages rendered from Markdown (GitHub-flavored: tables, task lists, code blocks), with reading time, related posts and comments
-- Topics page, About page, newsletter sign-up (welcome email via Resend)
-- Sign up / sign in with email + password, or Google (optional)
+- Topics page, About page
+- Newsletter: sign-up with a welcome email, an email to every subscriber when a post is published (once per post), and one-click unsubscribe
+- Accounts: sign up / sign in with email + password or Google (optional), forgot / reset password by email, change password, profile with bio
 - Light / dark / system theme
-- SEO: per-post metadata and Open Graph, `sitemap.xml`, `robots.txt`, RSS at `/feed.xml`
+- SEO: per-post metadata, canonical URLs, generated share images, schema.org `BlogPosting` data, `sitemap.xml`, `robots.txt`, RSS at `/feed.xml`; drafts and missing posts return a real 404
+- Spam and abuse protection: rate limits on sign-in, sign-up, password reset, comments and newsletter sign-up
 
 **Admin dashboard (`/admin`, admins only)**
 
 - **Overview** — published/draft counts, total views, comments, users, subscribers, a six-month activity chart, most-read posts, recent edits and comments
 - **Posts** — search, filter by status, publish/unpublish, edit, delete
-- **Editor** — Markdown with toolbar, live preview, word count, `Import .md` (reads front matter), cover image upload (UploadThing) or URL, tags, featured flag
+- **Editor** — Markdown with toolbar, live preview, word count, `Import .md` (reads front matter), cover image upload (UploadThing) or URL, tags, featured flag, "email subscribers" toggle, draft preview on the real page, unsaved-changes warning, Ctrl/⌘+S to save
 - **Tags**, **Comments** (moderation), **Users** (change role, delete), **Subscribers** (list, delete, CSV export)
 
 ## Tech stack
@@ -115,8 +117,8 @@ SENTRY_PROJECT=""
 | `NEXT_PUBLIC_APP_NAME` | No | Blog name in the header, titles and RSS. Default "The Notebook". |
 | `NEXT_PUBLIC_APP_DESCRIPTION` | No | Tagline shown on the home page and in metadata. |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | No | Google sign-in. Create an OAuth client in [Google Cloud Console](https://console.cloud.google.com/apis/credentials) with redirect URI `{NEXT_PUBLIC_SERVER_URL}/api/auth/callback/google`. The button appears once both are set. |
-| `RESEND_API_KEY` | No | Sends the subscriber welcome email via [resend.com](https://resend.com). Without it, emails are printed to the server log. |
-| `EMAIL_FROM` | No | Sender address, e.g. `Blog <hello@yourdomain.com>`. Must be a domain verified in Resend. |
+| `RESEND_API_KEY` | For email | Sends newsletter, welcome and password-reset emails via [resend.com](https://resend.com). Without it, emails are printed to the server log instead (fine for development). |
+| `EMAIL_FROM` | For email | Sender address, e.g. `Blog <hello@yourdomain.com>`, on a domain verified in Resend. Without it, Resend's test sender is used, which only delivers to your own Resend account email. |
 | `NEXT_PUBLIC_SENTRY_DSN` | No | Error reporting via [sentry.io](https://sentry.io). Monitoring is off until set. |
 | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` | No | Upload source maps during `npm run build` so Sentry stack traces show your code. |
 | `AUTH_TRUST_HOST` | No | Set to `true` when running `next start` yourself behind a proxy (not needed on Vercel). |
@@ -136,8 +138,21 @@ Then use `postgresql://postgres:postgres@localhost:5432/blog` for both database 
 ## Making someone an admin
 
 New sign-ups are regular users (they can comment). To promote someone, sign in
-as an admin and change their role under **Dashboard → Users**. The first admin
-comes from the seed script.
+as an admin and change their role under **Dashboard → Users**. Role changes
+apply on the user's next page load. The first admin comes from the seed script.
+
+## Newsletter
+
+Visitors subscribe from the footer or the About page and get a welcome email.
+When you publish a post, every subscriber gets an email with the title,
+excerpt, cover and a link, sent in the background after the save. Each post is
+emailed **once**: editing, unpublishing or republishing never sends it again.
+Untick **Email N subscribers when published** in the editor to publish quietly.
+Publishing from the Posts list always emails.
+
+Every email has an unsubscribe link and `List-Unsubscribe` headers, so Gmail and
+Apple Mail show their own one-click "Unsubscribe" button. Export subscribers as
+CSV from **Dashboard → Subscribers**.
 
 ## Writing posts
 
@@ -172,7 +187,7 @@ posts may come from any HTTPS host; cover images from UploadThing and
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript check |
 | `npm test` | Unit tests (Vitest) |
-| `npm run test:e2e` | End-to-end tests (Playwright; needs a seeded DB, starts the dev server). First run: `npx playwright install chromium` |
+| `npm run test:e2e` | End-to-end tests of every flow (Playwright; needs a seeded DB and `SEED_ADMIN_PASSWORD`, starts the dev server). Test data uses `e2e+…@example.com` and `e2e-` slugs and is cleaned up automatically. First run: `npx playwright install chromium` |
 | `npm run db:seed` | Create the admin and sample content |
 | `npx prisma migrate dev` | Apply/create migrations in development |
 | `npx prisma migrate deploy` | Apply migrations in production |
@@ -182,15 +197,17 @@ posts may come from any HTTPS host; cover images from UploadThing and
 
 ```
 app/
-  (root)/        public site: home, blog, blog/[slug], tags, about, account
-  (auth)/        sign-in, sign-up
+  (root)/        public site: home, blog, blog/[slug], tags, about, account, unsubscribe
+  (auth)/        sign-in, sign-up, forgot-password, reset-password
   admin/         dashboard: overview, posts, tags, comments, users, subscribers
-  api/           Auth.js and UploadThing handlers
+  api/           Auth.js, UploadThing and one-click unsubscribe handlers
   feed.xml/      RSS feed
 components/      ui/ (shadcn), shared/ (site), admin/ (dashboard)
 lib/
   actions/       server actions (all writes; admin ones check the role)
   queries/       server-only reads
+  newsletter.ts  new-post emails and unsubscribe links
+  rate-limit.ts  database-backed rate limits
   validators.ts  zod schemas shared by forms and actions
 prisma/          schema and migrations
 db/              seed script and sample posts
@@ -204,6 +221,21 @@ proxy.ts         redirects signed-out visitors away from /admin and /account
 1. Create a hosted Postgres database and run `npx prisma migrate deploy` against it (and `npm run db:seed` once for the admin).
 2. Import the repo in Vercel and add the environment variables above, with `NEXT_PUBLIC_SERVER_URL` set to your real domain.
 3. If you use Google sign-in, add the production callback URL to your OAuth client.
+
+The build doesn't connect to the database, so it works in CI and on Vercel
+before the database is set up. Run `npx prisma migrate deploy` after pulling
+changes that add migrations.
+
+### Go-live checklist
+
+- [ ] Real Postgres in `DATABASE_URL` / `DIRECT_DATABASE_URL`, migrations deployed
+- [ ] New `AUTH_SECRET` for production (don't reuse the development one)
+- [ ] `NEXT_PUBLIC_SERVER_URL` set to the real `https://` domain (used in emails, feeds and share links)
+- [ ] Admin created with a strong `SEED_ADMIN_PASSWORD`, then remove the sample posts and the `reader@example.com` account from the dashboard if you don't want them
+- [ ] Domain verified in Resend, `RESEND_API_KEY` and `EMAIL_FROM` set, and a test subscription received
+- [ ] `UPLOADTHING_TOKEN` set and a cover image uploaded once
+- [ ] Your own text in `app/(root)/about/page.tsx`, and `NEXT_PUBLIC_APP_NAME` / `NEXT_PUBLIC_APP_DESCRIPTION` set
+- [ ] Optional: Sentry DSN for error alerts, Google sign-in
 
 ## Theme
 

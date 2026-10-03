@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { signOutUser } from "@/lib/actions/user.actions";
+import { isAdmin } from "@/lib/auth-guard";
 
 const UserButton = async () => {
   const session = await auth();
@@ -26,6 +27,7 @@ const UserButton = async () => {
   }
 
   const { user } = session;
+  const showDashboard = await isAdmin();
   const initial = user.name?.charAt(0).toUpperCase() ?? "?";
 
   return (
@@ -55,7 +57,7 @@ const UserButton = async () => {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem render={<Link href="/account" />}>Account</DropdownMenuItem>
-          {user.role === "admin" && (
+          {showDashboard && (
             <DropdownMenuItem render={<Link href="/admin" />}>Dashboard</DropdownMenuItem>
           )}
         </DropdownMenuGroup>

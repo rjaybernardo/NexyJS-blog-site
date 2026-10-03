@@ -17,6 +17,9 @@ export async function generateMetadata({
 
   return {
     title: q ? `Search: ${q}` : tag ? `Topic: ${tag}` : "Blog",
+    alternates: { canonical: tag ? `/blog?tag=${encodeURIComponent(tag)}` : "/blog" },
+    // Search result pages are thin duplicates of posts
+    robots: q ? { index: false } : undefined,
   };
 }
 

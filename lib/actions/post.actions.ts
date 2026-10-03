@@ -1,14 +1,27 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 
 import { assertAdmin } from "@/lib/auth-guard";
+import { announcePost, claimAnnouncement } from "@/lib/newsletter";
 import { prisma } from "@/lib/prisma";
 import { formatError } from "@/lib/utils/server";
 import { postSchema, updatePostSchema } from "@/lib/validators";
 
 type ActionResult = { success: boolean; message: string; id?: string };
+
+// Emails subscribers about a newly published post, once, after the response
+async function announceIfNew(postId: string, notify: boolean) {
+  if (!notify || !(await claimAnnouncement(postId))) return false;
+
+  after(() => announcePost(postId));
+  return true;
+}
+
+const savedMessage = (base: string, announced: boolean) =>
+  announced ? `${base}. Subscribers are being emailed.` : base;
 
 // Everything a post appears on: home, listing, the post, feeds
 function revalidateBlog(slug?: string) {
@@ -18,6 +31,7 @@ function revalidateBlog(slug?: string) {
 
 export async function createPost(
   data: z.infer<typeof postSchema>,
+  notifySubscribers = true,
 ): Promise<ActionResult> {
   try {
     const session = await assertAdmin();
@@ -33,8 +47,9 @@ export async function createPost(
     });
 
     revalidateBlog(created.slug);
+    const announced = await announceIfNew(created.id, notifySubscribers);
 
-    return { success: true, message: "Post created", id: created.id };
+    return { success: true, message: savedMessage("Post created", announced), id: created.id };
   } catch (error) {
     return { success: false, message: formatError(error) };
   }
@@ -42,6 +57,7 @@ export async function createPost(
 
 export async function updatePost(
   data: z.infer<typeof updatePostSchema>,
+  notifySubscribers = true,
 ): Promise<ActionResult> {
   try {
     await assertAdmin();
@@ -69,8 +85,9 @@ export async function updatePost(
 
     revalidateBlog(existing.slug);
     if (existing.slug !== post.slug) revalidateBlog(post.slug);
+    const announced = await announceIfNew(id, notifySubscribers);
 
-    return { success: true, message: "Post saved", id };
+    return { success: true, message: savedMessage("Post saved", announced), id };
   } catch (error) {
     return { success: false, message: formatError(error) };
   }
@@ -104,10 +121,11 @@ export async function setPostStatus(
     revalidateBlog(existing.slug);
     revalidatePath("/admin", "layout");
 
-    return {
-      success: true,
-      message: status === "published" ? "Post published" : "Post unpublished",
-    };
+    if (status === "draft") return { success: true, message: "Post unpublished" };
+
+    const announced = await announceIfNew(id, true);
+
+    return { success: true, message: savedMessage("Post published", announced) };
   } catch (error) {
     return { success: false, message: formatError(error) };
   }

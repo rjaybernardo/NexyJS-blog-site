@@ -1,12 +1,14 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 
-// The JWT role is only set at sign-in, so confirm it against the database
-async function getAdminSession() {
+// The JWT role is only set at sign-in, so read the role from the database:
+// promotions and demotions in the dashboard apply on the next request
+const getAdminSession = cache(async () => {
   const session = await auth();
 
-  if (!session?.user?.id || session.user.role !== "admin") {
+  if (!session?.user?.id) {
     return null;
   }
 
@@ -20,7 +22,7 @@ async function getAdminSession() {
   });
 
   return user?.role === "admin" ? session : null;
-}
+});
 
 // For UI: whether to show admin-only links and controls
 export async function isAdmin() {

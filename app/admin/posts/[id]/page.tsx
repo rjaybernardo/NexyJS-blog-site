@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ExternalLinkIcon } from "lucide-react";
 
 import PageHeader from "@/components/admin/page-header";
 import PostForm from "@/components/admin/post-form";
-import { buttonVariants } from "@/components/ui/button";
+import { prisma } from "@/lib/prisma";
 import { getAllTags, getPostForEdit } from "@/lib/queries/admin";
 
 export const metadata: Metadata = { title: "Edit post" };
@@ -15,21 +13,20 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
 
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
-  const [post, tags] = await Promise.all([getPostForEdit(id), getAllTags()]);
+  const [post, tags, subscriberCount] = await Promise.all([
+    getPostForEdit(id),
+    getAllTags(),
+    prisma.subscriber.count(),
+  ]);
 
   if (!post) notFound();
 
   return (
     <>
-      <PageHeader title="Edit post" description={post.title}>
-        {post.status === "published" && (
-          <Link href={`/blog/${post.slug}`} target="_blank" className={buttonVariants({ variant: "outline" })}>
-            View <ExternalLinkIcon />
-          </Link>
-        )}
-      </PageHeader>
+      <PageHeader title="Edit post" description={post.title} />
       <PostForm
         tags={tags}
+        subscriberCount={subscriberCount}
         post={{
           id: post.id,
           title: post.title,
@@ -40,6 +37,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
           status: post.status,
           featured: post.featured,
           tagIds: post.tags.map((tag) => tag.id),
+          notifiedAt: post.notifiedAt,
         }}
       />
     </>

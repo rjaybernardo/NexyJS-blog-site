@@ -4,7 +4,7 @@ import Markdown from "@/components/shared/markdown";
 import NewsletterForm from "@/components/shared/newsletter-form";
 import { APP_NAME } from "@/lib/constants";
 
-export const metadata: Metadata = { title: "About" };
+export const metadata: Metadata = { title: "About", alternates: { canonical: "/about" } };
 
 // Edit this text to describe your blog
 const about = `

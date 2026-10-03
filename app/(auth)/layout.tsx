@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
+
 import Logo from "@/components/shared/logo";
+
+export const metadata: Metadata = { robots: { index: false } };
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
